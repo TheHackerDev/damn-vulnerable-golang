@@ -57,7 +57,7 @@ func main() {
 	// Vulnerability: Executing a command with user-supplied input can lead to command injection vulnerabilities.
 	// An attacker can inject malicious commands to gain unauthorized access or perform destructive actions.
 	// Best practice is to avoid using user input directly in commands and use safe alternatives like parameterized queries.
-	userInput := "ls -l; rm -rf /"
+	userInput := "ls -l; rm -rf ./" // NOTE: We are not going to erase the whole hard drive; at worst, we will erase the current directory
 	cmd := exec.Command("sh", "-c", userInput)
 	cmd.Run()
 
