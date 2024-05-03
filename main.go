@@ -1,16 +1,20 @@
 package main
 
 import (
+	"compress/gzip"
 	"crypto/des"
 	"crypto/md5"
+	"crypto/rc4"
 	"crypto/tls"
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 )
 
 func main() {
@@ -50,6 +54,7 @@ func main() {
 	defer f.Close()
 
 	// Gosec G201: SQL query construction using format string
+	// CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
 	username := "admin"
 	pass := "' OR 1=1--"
 	query := fmt.Sprintf("SELECT * FROM users WHERE username='%s' AND password='%s'", username, pass)
@@ -73,6 +78,37 @@ func main() {
 	// CWE-338: Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)
 	token := rand.Int()
 	fmt.Println("Random token:", token)
+
+	// Gosec G501: Blacklisted import crypto/rc4
+	// CWE-327: Use of a Broken or Risky Cryptographic Algorithm
+	cipher, _ := rc4.NewCipher([]byte("secret"))
+	fmt.Printf("%x", cipher)
+
+	resp, err := http.Get("http://127.0.0.1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// Gosec G107: Potential HTTP request made with variable url
+	// CWE-88: Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')
+	url := resp.Request.URL.Query().Get("url")
+	http.Get(url)
+
+	// Gosec G109: Potential Integer overflow made by strconv.Atoi result conversion to int16/32
+	// CWE-190: Integer Overflow or Wraparound
+	val := resp.Request.URL.Query().Get("val")
+	num, _ := strconv.Atoi(val)
+	var intVal int16 = int16(num)
+	fmt.Println(intVal)
+
+	// Gosec G110: Potential DoS vulnerability via decompression bomb
+	// CWE-409: Improper Handling of Highly Compressed Data (Data Amplification)
+	http.HandleFunc("/decompress", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<30) // 1GB
+		gzr, _ := gzip.NewReader(r.Body)
+		_, _ = io.Copy(os.Stdout, gzr)
+	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
