@@ -15,6 +15,8 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
 func main() {
@@ -147,6 +149,15 @@ func main() {
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<30) // 1GB
 		gzr, _ := gzip.NewReader(r.Body)
 		_, _ = io.Copy(os.Stdout, gzr)
+	})
+
+	// Snyk Open Source: vulnerable dependency github.com/dgrijalva/jwt-go v3.2.0
+	// CVE-2020-26160: Access restriction bypass — the library does not validate the "aud" claim correctly
+	// when it is provided as a []string, allowing an attacker to bypass audience checks.
+	// The library is also deprecated and no longer maintained. Use github.com/golang-jwt/jwt/v5 instead.
+	tokenString := "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmb28ifQ."
+	_, _ = jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte("secret"), nil
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
