@@ -1,0 +1,41 @@
+name: Request ArmorCode Exception
+
+# Triggers when someone comments on a PR. We filter down to comments on
+# pull requests that start with /request-exception.
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  request-exception:
+    # issue_comment fires for both issues and PRs. Only continue if this
+    # comment is on a pull request, and it starts with our command.
+    if: >
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/request-exception')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Checkout (needed only if you keep the script in-repo)
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Request exception in ArmorCode
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARMORCODE_API_TOKEN: ${{ secrets.ARMORCODE_API_TOKEN }}
+          ARMORCODE_BASE_URL: ${{ vars.ARMORCODE_BASE_URL }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+        run: python .github/scripts/request_exception.py
